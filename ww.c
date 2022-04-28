@@ -176,52 +176,61 @@ if(boolDirectory==1){           //if we are working on a directory, create files
     return EXIT_SUCCESS;
 }
 
-void listFilesRecursively(char *basePath, int pageWidth)
+void wrapFilesRecursively(char *basePath, int pageWidth, char* backupDirectory)
 {
     char path[1000];
-        struct dirent *dp;
+        struct dirent *directp;
     DIR *dir = opendir(basePath);
 
     //Unable to open directory stream
     if (!dir)
         return;
 
-    while ((dp = readdir(dir)) != NULL)
+    while ((directp = readdir(dir)) != NULL)
     {
-        if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0)
+        if (strcmp(directp->d_name, ".") != 0 && strcmp(directp->d_name, "..") != 0)
         {	
             // Construct new path from our base path
             strcpy(path, basePath);
             strcat(path, "/");
-            strcat(path, dp->d_name);
+            strcat(path, directp->d_name);
             
-            chdir(basePath); //Change our working directory to everything except the filename.
+            		//Somehow We need to change our directory to the current subdirectory and call wordWrapTextFile, then change the directory back. 
+                        chdir(basePath); //Change our working directory to everything except the filename.
         
-                //if(isDirectory(dp->d_name) == 0) //For some reason, isDirectory is producing the wrong output in cases I've tested. It thinks all files are not directories.
-		//{
-			printf("I am inside of the recursive function and dp->d_name is %s\n", dp->d_name);
+			printf("I am inside of the recursive function and directp->d_name is %s\n", directp->d_name);
 			printf("I am inside of the recursive function and basePath is %s\n", basePath);
 			printf("I am inside of the recursive function and path is %s\n", path);
+        
+                if(isDirectory(directp->d_name) == 0) //For some reason, isDirectory is producing the wrong output in cases I've tested. It thinks all files are not directories.
+		{
+			
 			
 		
-			//Somehow We need to change our directory to the current subdirectory and call wordWrapTextFile, then change the directory back. 
-			if((strstr(dp->d_name, "wrap.") == NULL)) //if the string doesn't contain "wrap." as prefix
+
+			if((strstr(directp->d_name, "wrap.") == NULL)) //if the string doesn't contain "wrap." as prefix
 			{
-				if(!(*dp->d_name == '.')) //if the string doesn't contain "." as prefix
+				if(!(*directp->d_name == '.')) //if the string doesn't contain "." as prefix
 				{    
-					wordWrapTextFile(dp->d_name, pageWidth); //Call the wordWrap function on it.  MUST CALL USING CHDIR + FILE NAME ONLY. NO PATHS.
+					printf("Calling wordWrapTextFile on  %s\n", directp->d_name);
+					wordWrapTextFile(directp->d_name, pageWidth); //Call the wordWrap function on it.  MUST CALL USING CHDIR + FILE NAME ONLY. NO PATHS.
 				}
 			}
-		//}
-			//chdir("subfolder");
-                        listFilesRecursively(path, pageWidth);
+			
+		}
+		//Recursive is not in order though! So just make it go back to the original directory every time!	
+		chdir(backupDirectory);
+		
+		wrapFilesRecursively(path, pageWidth, backupDirectory);
         }
     }
     closedir(dir);
 }
 
 int main(int argc, char **argv)
-{
+{	char currentDirectory[100];
+
+	getcwd(currentDirectory, 100);
 	char nameOfFile[30]; //Declare an array of max length 30 for the file name. This could be changed to be bigger.
 	int pageWidth = atoi(argv[1]); //This is the width of the page.
 
@@ -250,7 +259,7 @@ int main(int argc, char **argv)
 	//If the file is a directory, we should call wordWrap on all of the text files inside of it.
 	if(isDirectory(nameOfFile) == 1)
 	{
-	listFilesRecursively(nameOfFile, pageWidth);
+	wrapFilesRecursively(nameOfFile, pageWidth, currentDirectory);
 /*
 		DIR *directory;
 		struct dirent *dir;
@@ -276,6 +285,12 @@ int main(int argc, char **argv)
 		}
 			printf("Done! Check the directory for the new files.\n");
 	*/}
+	
+	
+	if(isDirectory(nameOfFile) == 1 && )
+	{
+	
+	
 
 	return EXIT_SUCCESS;
 }
