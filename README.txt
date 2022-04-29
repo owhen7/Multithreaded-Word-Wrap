@@ -8,4 +8,4 @@ Nevertheless, here would be proposed tests to determine whether our program pass
 The amount of open directories allowed appears to be 64,000 on linux, so it would not be feasible to test the limits of this by inventing a test case with a lot of nested directories to try to reach the limit. Instead, we could implement print/sleep statements to verify that the code is not being wrapped at the same time that the directories are being traversed. One is happening before the other.
 
 
-2/
+2. We have however re-created out wordwrap function to include -rM,N (recursive multithreading arguments). Our multithreading approach was to create a thread then have the directoryWorker work to sort out the directories traversed into the directory_queue, and enqueue the files traversed into the file_queue. Then, we could have other set of N threads work on getting files from file_queue to wrap them.
