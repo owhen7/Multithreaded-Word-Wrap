@@ -1,12 +1,12 @@
 #include "wwheader.h"
 #include "limits.h"
+#include "pthread.h"
 
 void enqueueDir(struct dirQueue* directory_queue, char* item)
 {
     directory_queue->array[directory_queue->rear + 1] = *item;
     directory_queue->size = directory_queue->size + 1;
     //printf("%d enqueued to queue\n", item);
-    return EXIT_SUCCESS;
 }
 
 // Function to remove an item from queue.
@@ -55,22 +55,21 @@ char dequeueFile(struct fileQueue* file_queue)
     return item;
 }
 
-//creating static memory array that will act as our memory location to dynamically allocate data
-static char memorySpace1[MEMSIZE1];
-static char memorySpace2[MEMSIZE2];
+int numReadThreads;
 
-//a void pointer that acts as a head pointer of our queue
-void* startPoint1 = (dirQueue*)(memorySpace1);
-void* startPoint2 = (dirQueue*)(memorySpace2);
-
-void *directoryWorker(void* initialPath)
+void *directoryWorker(void* arguments)
 {
+    struct argStruct *args = (struct argStruct *)args;
+    struct dirQueue* directory_queue = args->directory_queue;
+    struct fileQueue* file_queue = args->file_queue;
 
-    struct dirQueue *basePath = initialPath;
-    dirQueue* directory_queue = startPoint1;
-    fileQueue* file_queue = startPoint2;
+    int readThreads = args->readThreads;
 
-    if(directory_queue->array == NULL){
+    struct dirQueue *basePath = args->initialPath;
+    //dirQueue* directory_queue = startPoint1;
+    //fileQueue* file_queue = startPoint2;
+
+    /*if(directory_queue->array == NULL){
          //struct dirQueue* directory_queue = (struct dirQueue*)malloc(sizeof(struct dirQueue));
         directory_queue->front = directory_queue->size = 0;
 
@@ -90,12 +89,18 @@ void *directoryWorker(void* initialPath)
         file_queue->array = (char*)malloc(file_queue->capacity * sizeof(char));
 
     }
-
+*/
     if(isDirectory(basePath->array) == 0)   // If the file is not a folder, it should be a text file.
     {
          enqueueFile(file_queue, basePath->array);
          return EXIT_SUCCESS;
     }
+
+    if(!basePath->start)
+        basePath->start = 1;
+
+    if(!basePath->stop)
+        basePath->stop = 1;
 
     for(int i = basePath->start; i< basePath->stop; i++){
         char path[1000];
@@ -136,36 +141,51 @@ void *directoryWorker(void* initialPath)
 
 
                     if(directory_queue->size <= readThreads){
+                            pthread_t readtids[readThreads];
+                            int threadsToCreate = directory_queue->size;
+                            int readChunk = directory_queue->size / threadsToCreate;
+                            int j;
+                            for(j=0;j<directory_queue->size % threadsToCreate;j++){
+                                        directory_queue[j].start = readChunk * j;
+                                        directory_queue[j].stop = readChunk * (j+1) + 1;
+                                        pthread_create(&readtids[j],NULL,directoryWorker,&directory_queue[j]);
+                                        numReadThreads += 1;
+                            }
+                            for(int i=1;i<threadsToCreate-j;i++){
+                                    directory_queue[i].start = readChunk * i;
+                                    directory_queue[i].stop = readChunk * (i+1);
+                                    pthread_create(&readtids[i],NULL,directoryWorker,&directory_queue[i]);
+                                    numReadThreads += 1;
+                                }
+
                             //wait for active threads to finish
                             for(int i=1; i<numReadThreads;i++){
                                     pthread_join(readtids[i],NULL);
-                                    numReadThreads--;
                             }
-
-                            int threadsToCreate = directory_queue->size;
+                            numReadThreads = 1;
+                    }
+                    else{
+                            pthread_t readtids[readThreads];
+                            int threadsToCreate = readThreads;
                             int readChunk = directory_queue->size / threadsToCreate;
                             for(int i=1;i<threadsToCreate;i++){
                                 directory_queue[i].start = readChunk * i;
                                 directory_queue[i].stop = readChunk * (i+1);
-                               pthread_create(&readtids[numReadThreads],NULL,directoryWorker,&directory_queue[i]);
-                               numReadThreads += 1;
-                            }
-                    }
-                    else{
-                            //wait for active threads to finish
-                            for(int i=0; i<numReadThreads;i++){
-                                    pthread_join(readtids[i],NULL);
-                                    numReadThreads--;
-                            }
-
-                            int threadsToCreate = readThreads;
-                            int readChunk = directory_queue->size / threadsToCreate;
-                            for(int i=0;i<threadsToCreate;i++){
-                                directory_queue[i].start = readChunk * i;
-                                directory_queue[i].stop = readChunk * (i+1);
-                                pthread_create(&readtids[numReadThreads],NULL,directoryWorker,&directory_queue[i]);
+                                pthread_create(&readtids[i],NULL,directoryWorker,&directory_queue[i]);
                                 numReadThreads += 1;
                             }
+
+                            //wait for active threads to finish
+                            for(int i=1; i<numReadThreads;i++){
+                                    pthread_join(readtids[i],NULL);
+                            }
+                            numReadThreads = 1;
                     }
 
+                    struct argStruct args2;
+                    args2.initialPath = dequeueDir(directory_queue);
+                    args2.directory_queue = directory_queue;
+                    args2.file_queue = file_queue;
+                    args2.readThreads = args->readThreads;
+        directoryWorker((void*)&args2);
     }

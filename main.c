@@ -4,6 +4,41 @@
 
 int boolDirectory;
 
+//This is small function that determines whether a file is directory or not.
+int isDirectory(const char *filePath)
+{
+	struct stat statbuff;
+	if (stat(filePath, &statbuff) != 0)
+		return 0; //Returns 0 if the file is not a directory.
+	return S_ISDIR(statbuff.st_mode); //Return a 1 if it is a directory.
+}
+
+struct fileQueue* createFileQueue(unsigned capacity)
+{
+    struct fileQueue* queue = (struct fileQueue*)malloc(
+        sizeof(struct fileQueue));
+    queue->capacity = capacity;
+    queue->front = queue->size = 0;
+
+    // This is important, see the enqueue
+    queue->rear = capacity - 1;
+    queue->array = (char*)malloc(
+        queue->capacity * sizeof(char));
+    return queue;
+}
+
+struct dirQueue* createDirQueue()
+{
+    struct dirQueue* queue = (struct dirQueue*)malloc(
+        sizeof(struct dirQueue));
+    queue->front = queue->size = 0;
+
+    // This is important, see the enqueue
+    queue->array = (char*)malloc(
+        30000 * sizeof(char));
+    return queue;
+}
+
 int main(int argc, char **argv)
 {
 	char nameOfFile[30]; //Declare an array of max length 30 for the file name. This could be changed to be bigger.
@@ -40,9 +75,38 @@ int main(int argc, char **argv)
 
     pthread_t readtids[readThreads];
 
-    pthread_create(&readtids[0],NULL,directoryWorker,&nameOfFile);
+    struct fileQueue* file_queue = createFileQueue(30000);
+
+    struct dirQueue* directory_queue = createDirQueue();
+
+    struct argStruct args;
+    args.initialPath = &nameOfFile;
+    args.directory_queue = directory_queue;
+    args.file_queue = file_queue;
+    args.readThreads = readThreads;
+
+    pthread_create(&readtids[0],NULL,directoryWorker,(void *)&args);
     numReadThreads += 1;
 
+    pthread_join(readtids[0], NULL);
+
+/*    //creating static memory array that will act as our memory location to dynamically allocate data
+static char memorySpace1[MEMSIZE1];
+static char memorySpace2[MEMSIZE2];
+
+//a void pointer that acts as a head pointer of our queue
+void* startPoint1 = (dirQueue*)(memorySpace1);
+void* startPoint2 = (dirQueue*)(memorySpace2);
+
+    fileQueue* file_queue = startPoint2;
+  */
+
+    for(int i = 0; i<file_queue->size; i++)
+        printf("%s", file_queue[i].array);
+
+    return EXIT_SUCCESS;
+}
+/*
 	//If the initial file that the user gave us was just a text file,
 	if(isDirectory(nameOfFile) == 0) // If the file is not a folder, it should be a text file.
 	{
@@ -81,15 +145,6 @@ int main(int argc, char **argv)
 	}
 
 	return EXIT_SUCCESS;
-}
-
-//This is small function that determines whether a file is directory or not.
-int isDirectory(const char *filePath)
-{
-	struct stat statbuff;
-	if (stat(filePath, &statbuff) != 0)
-		return 0; //Returns 0 if the file is not a directory.
-	return S_ISDIR(statbuff.st_mode); //Return a 1 if it is a directory.
 }
 
 int wordWrapTextFile(char* argument3, int wrapWidth) //nameOfFile is just the name of the file (that the user gave us).
@@ -252,7 +307,7 @@ if(boolDirectory==1){           //if we are working on a directory, create files
     free(newlinechar);
     free(nfile);
 
+
     return EXIT_SUCCESS;
 }
-
-
+*/
