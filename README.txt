@@ -1,32 +1,11 @@
 By Owen Wexler (osw9) and Huzaif Mansuri (htm23)
 
-We tested our program by 
+
+We did not finish our code in time, but we hope that enough of it is present to demonstrate our progress and show our intended solution.
+Nevertheless, here would be proposed tests to determine whether our program passed certain specifications of the project.
+
+1. Our program must not open many directories at the same time via normal recursion. It should instead open one directory at a time, make note of the file paths of any subdirectories it encounters, and then put all the files paths into a queue. Then, it should open and close these subdirectories afterwards so that only N amount are open at a time, where N is the amount of threads running, rather than infinitely recursively many.
+The amount of open directories allowed appears to be 64,000 on linux, so it would not be feasible to test the limits of this by inventing a test case with a lot of nested directories to try to reach the limit. Instead, we could implement print/sleep statements to verify that the code is not being wrapped at the same time that the directories are being traversed. One is happening before the other.
 
 
-
-- calling it with only an integer and then entering standard input. It prints to the terminal.
-./ww 50
-
-
-- calling it on a subdirectory, so it produces .wrap files inside the same folder.
-
-./ww 30 subfolder
-
- - calling it on a single file, where it prints to the terminal.
-
-./ww 60 sampletextfile
-
-
-
-
-The following is Owen's MAKEFILE:
-CC=gcc
-CFLAGS= -Wall -Wvla -fsanitize=address,undefined
-DEPS = wwheader.h
-OBJ = ww.o 
-
-%.o: %.c $(DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS)
-
-ww: $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS)
+2/
